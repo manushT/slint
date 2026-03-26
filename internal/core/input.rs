@@ -1590,17 +1590,15 @@ mod tests {
 
     #[test]
     fn test_with_ignore_alt() {
-        let k = Keys::new("a", KeyboardModifiers { alt: true, ..Default::default() })
-            .with_ignore_alt();
+        let k =
+            Keys::new("a", KeyboardModifiers { alt: true, ..Default::default() }).with_ignore_alt();
         assert!(!k.ignore_shift);
         assert!(k.ignore_alt);
     }
 
     #[test]
     fn test_with_both_ignore() {
-        let k = Keys::new("x", KeyboardModifiers::default())
-            .with_ignore_shift()
-            .with_ignore_alt();
+        let k = Keys::new("x", KeyboardModifiers::default()).with_ignore_shift().with_ignore_alt();
         assert!(k.ignore_shift);
         assert!(k.ignore_alt);
     }
@@ -1701,10 +1699,7 @@ mod tests {
 
     #[test]
     fn test_from_key_matches_event() {
-        let k = Keys::from_key(
-            key_codes::Key::Return,
-            KeyboardModifiers::default(),
-        );
+        let k = Keys::from_key(key_codes::Key::Return, KeyboardModifiers::default());
         let return_char: char = key_codes::Key::Return.into();
         let event = KeyEvent {
             text: SharedString::from(alloc::string::String::from(return_char)),

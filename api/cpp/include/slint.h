@@ -390,20 +390,17 @@ struct Keys
     ///
     /// The key should be a single lowercase character or named key character.
     /// For named keys, use the character constants from `slint::platform::key_codes`.
-    static Keys create(std::string_view key,
-                       cbindgen_private::KeyboardModifiers modifiers = {})
+    static Keys create(std::string_view key, cbindgen_private::KeyboardModifiers modifiers = {})
     {
         Keys result;
         SharedString key_str(key);
-        cbindgen_private::slint_keys(&key_str, modifiers.alt, modifiers.control,
-                                     modifiers.shift, modifiers.meta, false, false,
-                                     &result.inner);
+        cbindgen_private::slint_keys(&key_str, modifiers.alt, modifiers.control, modifiers.shift,
+                                     modifiers.meta, false, false, &result.inner);
         return result;
     }
 
     /// Creates a `Keys` from a single character and keyboard modifiers.
-    static Keys from_character(char ch,
-                               cbindgen_private::KeyboardModifiers modifiers = {})
+    static Keys from_character(char ch, cbindgen_private::KeyboardModifiers modifiers = {})
     {
         return create(std::string_view(&ch, 1), modifiers);
     }
@@ -425,10 +422,7 @@ struct Keys
     }
 
     /// Returns a platform-native display string for this key binding.
-    SharedString to_string() const
-    {
-        return private_api::keys_to_string(inner);
-    }
+    SharedString to_string() const { return private_api::keys_to_string(inner); }
 
     /// Returns the internal representation. For use with generated code.
     const cbindgen_private::Keys &data() const { return inner; }

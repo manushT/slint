@@ -218,6 +218,7 @@ pub use i_slint_core::api::*;
 pub use i_slint_core::component_factory::ComponentFactory;
 #[cfg(not(target_arch = "wasm32"))]
 pub use i_slint_core::graphics::{BorrowedOpenGLTextureBuilder, BorrowedOpenGLTextureOrigin};
+pub use i_slint_core::input::{Keys, key_codes::Key};
 pub use i_slint_core::items::{StandardListViewItem, TableColumn};
 pub use i_slint_core::model::{
     FilterModel, MapModel, Model, ModelExt, ModelNotify, ModelPeer, ModelRc, ModelTracker,
@@ -225,7 +226,6 @@ pub use i_slint_core::model::{
 };
 pub use i_slint_core::timers::{Timer, TimerMode};
 pub use i_slint_core::translations::{SelectBundledTranslationError, select_bundled_translation};
-pub use i_slint_core::input::{key_codes::Key, Keys};
 
 pub mod private_unstable_api;
 
