@@ -348,8 +348,26 @@ impl From<InternalKeyboardModifierState> for KeyboardModifiers {
     }
 }
 
-/// A `Keys` is created by the `@keys(...)` macro and
+/// A `Keys` is created by the `@keys(...)` macro in `.slint` files and
 /// defines which key event(s) activate a KeyBinding.
+///
+/// A `Keys` value can also be created programmatically from backend code using
+/// [`Keys::new()`] or [`Keys::from_key()`]:
+///
+/// ```rust,no_run
+/// use i_slint_core::input::{Keys, key_codes::Key};
+/// use i_slint_core::items::KeyboardModifiers;
+///
+/// // From a Key enum variant
+/// let save = Keys::from_key(Key::S, KeyboardModifiers { control: true, ..Default::default() });
+///
+/// // From a string literal (must be a single lowercase grapheme cluster)
+/// let plus = Keys::new("+", KeyboardModifiers { control: true, ..Default::default() });
+///
+/// // With ignore_shift (matches regardless of Shift state)
+/// let undo = Keys::from_key(Key::Z, KeyboardModifiers { control: true, ..Default::default() })
+///     .with_ignore_shift();
+/// ```
 #[derive(Clone, Eq, PartialEq, Default)]
 #[repr(C)]
 pub struct Keys {
@@ -413,6 +431,77 @@ pub(crate) mod ffi {
 }
 
 impl Keys {
+    /// Creates a new `Keys` from a string key and keyboard modifiers.
+    ///
+    /// The `key` should be a single lowercase grapheme cluster (e.g. `"a"`, `"+"`, `"é"`).
+    /// It will be lowercased and NFC-normalized automatically.
+    ///
+    /// For named special keys (Return, Tab, F1, etc.), prefer [`Keys::from_key()`] which
+    /// provides type-safe access via the [`Key`](key_codes::Key) enum.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use i_slint_core::input::Keys;
+    /// use i_slint_core::items::KeyboardModifiers;
+    ///
+    /// let zoom_in = Keys::new("+", KeyboardModifiers { control: true, ..Default::default() });
+    /// ```
+    pub fn new(key: &str, modifiers: KeyboardModifiers) -> Self {
+        let key = Self::normalize_key(key);
+        Self { key, modifiers, ignore_shift: false, ignore_alt: false }
+    }
+
+    /// Creates a new `Keys` from a [`Key`](key_codes::Key) enum variant and keyboard modifiers.
+    ///
+    /// This is the preferred way to create `Keys` for named special keys like
+    /// `Key::Return`, `Key::Tab`, `Key::F1`, or letter keys like `Key::A`.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use i_slint_core::input::{Keys, key_codes::Key};
+    /// use i_slint_core::items::KeyboardModifiers;
+    ///
+    /// let save = Keys::from_key(Key::S, KeyboardModifiers { control: true, ..Default::default() });
+    /// ```
+    pub fn from_key(key: key_codes::Key, modifiers: KeyboardModifiers) -> Self {
+        let key_char: char = key.into();
+        let key: SharedString = key_char.to_lowercase().collect::<alloc::string::String>().into();
+        Self { key, modifiers, ignore_shift: false, ignore_alt: false }
+    }
+
+    /// Sets the `ignore_shift` flag, making this key binding match regardless of the
+    /// Shift modifier state. Returns `self` for method chaining.
+    ///
+    /// This is equivalent to `Shift?` in the `@keys()` macro syntax.
+    pub fn with_ignore_shift(mut self) -> Self {
+        self.ignore_shift = true;
+        self
+    }
+
+    /// Sets the `ignore_alt` flag, making this key binding match regardless of the
+    /// Alt modifier state. Returns `self` for method chaining.
+    ///
+    /// This is equivalent to `Alt?` in the `@keys()` macro syntax.
+    pub fn with_ignore_alt(mut self) -> Self {
+        self.ignore_alt = true;
+        self
+    }
+
+    /// Normalize a key string: lowercase and NFC-normalize.
+    fn normalize_key(key: &str) -> SharedString {
+        let lowered = key.to_lowercase();
+        #[cfg(feature = "shared-parley")]
+        {
+            let normalizer = icu_normalizer::ComposingNormalizer::new_nfc();
+            let normalized = normalizer.normalize(&lowered);
+            SharedString::from(normalized.as_ref())
+        }
+        #[cfg(not(feature = "shared-parley"))]
+        {
+            SharedString::from(lowered.as_str())
+        }
+    }
+
     /// Check whether a `Keys` can be triggered by the given `KeyEvent`
     pub(crate) fn matches(&self, key_event: &KeyEvent) -> bool {
         // An empty Keys is never triggered, even if the modifiers match.
@@ -1455,5 +1544,215 @@ mod tests {
             #[cfg(not(any(target_os = "macos", target_os = "windows")))]
             assert_eq!(result.as_str(), _expected_linux, "Failed for key: {:?}", key);
         }
+    }
+
+    #[test]
+    fn test_new_basic() {
+        let k = Keys::new("a", KeyboardModifiers { control: true, ..Default::default() });
+        assert_eq!(k.key.as_str(), "a");
+        assert!(k.modifiers.control);
+        assert!(!k.modifiers.shift);
+        assert!(!k.ignore_shift);
+        assert!(!k.ignore_alt);
+    }
+
+    #[test]
+    fn test_new_lowercases() {
+        let k = Keys::new("A", KeyboardModifiers::default());
+        assert_eq!(k.key.as_str(), "a");
+    }
+
+    #[test]
+    fn test_from_key_letter() {
+        let k = Keys::from_key(
+            key_codes::Key::S,
+            KeyboardModifiers { control: true, ..Default::default() },
+        );
+        // Key::S is the lowercase 's' char
+        assert_eq!(k.key.as_str(), "s");
+        assert!(k.modifiers.control);
+    }
+
+    #[test]
+    fn test_from_key_special() {
+        let k = Keys::from_key(key_codes::Key::Return, KeyboardModifiers::default());
+        let return_char: char = key_codes::Key::Return.into();
+        assert_eq!(k.key.chars().next().unwrap(), return_char);
+    }
+
+    #[test]
+    fn test_with_ignore_shift() {
+        let k = Keys::new("z", KeyboardModifiers { control: true, ..Default::default() })
+            .with_ignore_shift();
+        assert!(k.ignore_shift);
+        assert!(!k.ignore_alt);
+    }
+
+    #[test]
+    fn test_with_ignore_alt() {
+        let k = Keys::new("a", KeyboardModifiers { alt: true, ..Default::default() })
+            .with_ignore_alt();
+        assert!(!k.ignore_shift);
+        assert!(k.ignore_alt);
+    }
+
+    #[test]
+    fn test_with_both_ignore() {
+        let k = Keys::new("x", KeyboardModifiers::default())
+            .with_ignore_shift()
+            .with_ignore_alt();
+        assert!(k.ignore_shift);
+        assert!(k.ignore_alt);
+    }
+
+    #[test]
+    fn test_matches_basic() {
+        let k = Keys::new("a", KeyboardModifiers { control: true, ..Default::default() });
+        let event = KeyEvent {
+            text: "a".into(),
+            modifiers: KeyboardModifiers { control: true, ..Default::default() },
+            ..Default::default()
+        };
+        assert!(k.matches(&event));
+    }
+
+    #[test]
+    fn test_matches_wrong_key() {
+        let k = Keys::new("a", KeyboardModifiers { control: true, ..Default::default() });
+        let event = KeyEvent {
+            text: "b".into(),
+            modifiers: KeyboardModifiers { control: true, ..Default::default() },
+            ..Default::default()
+        };
+        assert!(!k.matches(&event));
+    }
+
+    #[test]
+    fn test_matches_wrong_modifier() {
+        let k = Keys::new("a", KeyboardModifiers { control: true, ..Default::default() });
+        let event = KeyEvent {
+            text: "a".into(),
+            modifiers: KeyboardModifiers { alt: true, ..Default::default() },
+            ..Default::default()
+        };
+        assert!(!k.matches(&event));
+    }
+
+    #[test]
+    fn test_matches_uppercase_event_text() {
+        // Simulates CapsLock on: event text is "A" but we stored "a"
+        let k = Keys::new("a", KeyboardModifiers { control: true, ..Default::default() });
+        let event = KeyEvent {
+            text: "A".into(),
+            modifiers: KeyboardModifiers { control: true, ..Default::default() },
+            ..Default::default()
+        };
+        assert!(k.matches(&event));
+    }
+
+    #[test]
+    fn test_matches_ignore_shift() {
+        let k = Keys::new("z", KeyboardModifiers { control: true, ..Default::default() })
+            .with_ignore_shift();
+        // Should match with Shift pressed
+        let with_shift = KeyEvent {
+            text: "z".into(),
+            modifiers: KeyboardModifiers { control: true, shift: true, ..Default::default() },
+            ..Default::default()
+        };
+        assert!(k.matches(&with_shift));
+        // Should also match without Shift
+        let without_shift = KeyEvent {
+            text: "z".into(),
+            modifiers: KeyboardModifiers { control: true, ..Default::default() },
+            ..Default::default()
+        };
+        assert!(k.matches(&without_shift));
+    }
+
+    #[test]
+    fn test_matches_ignore_alt() {
+        let k = Keys::new("a", KeyboardModifiers { control: true, ..Default::default() })
+            .with_ignore_alt();
+        let with_alt = KeyEvent {
+            text: "a".into(),
+            modifiers: KeyboardModifiers { control: true, alt: true, ..Default::default() },
+            ..Default::default()
+        };
+        assert!(k.matches(&with_alt));
+        let without_alt = KeyEvent {
+            text: "a".into(),
+            modifiers: KeyboardModifiers { control: true, ..Default::default() },
+            ..Default::default()
+        };
+        assert!(k.matches(&without_alt));
+    }
+
+    #[test]
+    fn test_matches_empty_key_never_matches() {
+        let k = Keys::new("", KeyboardModifiers { control: true, ..Default::default() });
+        let event = KeyEvent {
+            text: "".into(),
+            modifiers: KeyboardModifiers { control: true, ..Default::default() },
+            ..Default::default()
+        };
+        assert!(!k.matches(&event));
+    }
+
+    #[test]
+    fn test_from_key_matches_event() {
+        let k = Keys::from_key(
+            key_codes::Key::Return,
+            KeyboardModifiers::default(),
+        );
+        let return_char: char = key_codes::Key::Return.into();
+        let event = KeyEvent {
+            text: SharedString::from(alloc::string::String::from(return_char)),
+            modifiers: KeyboardModifiers::default(),
+            ..Default::default()
+        };
+        assert!(k.matches(&event));
+    }
+
+    #[test]
+    fn test_new_equals_make_keys() {
+        // Ensure the new public API produces the same result as the internal make_keys
+        let from_new = Keys::new("a", KeyboardModifiers { control: true, ..Default::default() });
+        let from_make = make_keys(
+            "a".into(),
+            KeyboardModifiers { control: true, ..Default::default() },
+            false,
+            false,
+        );
+        assert_eq!(from_new, from_make);
+    }
+
+    #[test]
+    fn test_from_key_equals_make_keys() {
+        let key_char: char = key_codes::Key::S.into();
+        let from_key = Keys::from_key(
+            key_codes::Key::S,
+            KeyboardModifiers { control: true, ..Default::default() },
+        );
+        let from_make = make_keys(
+            alloc::string::String::from(key_char).into(),
+            KeyboardModifiers { control: true, ..Default::default() },
+            false,
+            false,
+        );
+        assert_eq!(from_key, from_make);
+    }
+
+    #[test]
+    fn test_with_ignore_shift_equals_make_keys() {
+        let k = Keys::new("z", KeyboardModifiers { control: true, ..Default::default() })
+            .with_ignore_shift();
+        let from_make = make_keys(
+            "z".into(),
+            KeyboardModifiers { control: true, ..Default::default() },
+            true,
+            false,
+        );
+        assert_eq!(k, from_make);
     }
 }

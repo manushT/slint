@@ -113,8 +113,16 @@ pub fn to_js_unknown<'a>(env: &'a Env, value: &Value) -> Result<Unknown<'a>> {
             o.into_unknown(env)
         }
         Value::Keys(keys) => {
-            // TODO: Make this an actual JS object
-            format!("{keys:?}").as_str().into_unknown(env)
+            let mut o = Object::new(env)?;
+            o.set_property(
+                env.create_string("display_string")?,
+                env.create_string(format!("{keys}").as_str())?,
+            )?;
+            o.set_property(
+                env.create_string("debug_string")?,
+                env.create_string(format!("{keys:?}").as_str())?,
+            )?;
+            o.into_unknown(env)
         }
         Value::Brush(brush) => {
             SlintBrush::from(brush.clone()).into_instance(env)?.as_object(env).into_unknown(env)

@@ -373,6 +373,73 @@ inline float get_resolved_default_font_size(const Component &component)
 
 } // namespace private_api
 
+/// The `Keys` type represents a keyboard shortcut (a key combined with modifiers).
+///
+/// It is typically created via the `@keys(...)` macro in `.slint` files, but can also be
+/// constructed programmatically from C++ using the static factory methods.
+///
+/// ## Example
+/// ```cpp
+/// auto save = slint::Keys::create("s", { .control = true });
+/// auto quit = slint::Keys::from_character('q', { .control = true });
+/// auto undo = slint::Keys::create("z", { .control = true }).with_ignore_shift();
+/// ```
+struct Keys
+{
+    /// Creates a `Keys` from a key string and keyboard modifiers.
+    ///
+    /// The key should be a single lowercase character or named key character.
+    /// For named keys, use the character constants from `slint::platform::key_codes`.
+    static Keys create(std::string_view key,
+                       cbindgen_private::KeyboardModifiers modifiers = {})
+    {
+        Keys result;
+        SharedString key_str(key);
+        cbindgen_private::slint_keys(&key_str, modifiers.alt, modifiers.control,
+                                     modifiers.shift, modifiers.meta, false, false,
+                                     &result.inner);
+        return result;
+    }
+
+    /// Creates a `Keys` from a single character and keyboard modifiers.
+    static Keys from_character(char ch,
+                               cbindgen_private::KeyboardModifiers modifiers = {})
+    {
+        return create(std::string_view(&ch, 1), modifiers);
+    }
+
+    /// Sets the `ignore_shift` flag. The key binding will match regardless of Shift state.
+    /// This is equivalent to `Shift?` in the `@keys()` macro syntax.
+    Keys with_ignore_shift() &&
+    {
+        inner.ignore_shift = true;
+        return std::move(*this);
+    }
+
+    /// Sets the `ignore_alt` flag. The key binding will match regardless of Alt state.
+    /// This is equivalent to `Alt?` in the `@keys()` macro syntax.
+    Keys with_ignore_alt() &&
+    {
+        inner.ignore_alt = true;
+        return std::move(*this);
+    }
+
+    /// Returns a platform-native display string for this key binding.
+    SharedString to_string() const
+    {
+        return private_api::keys_to_string(inner);
+    }
+
+    /// Returns the internal representation. For use with generated code.
+    const cbindgen_private::Keys &data() const { return inner; }
+
+    /// Conversion to the internal cbindgen type for property setters.
+    operator const cbindgen_private::Keys &() const { return inner; }
+
+private:
+    cbindgen_private::Keys inner {};
+};
+
 // Translator API is currently considered experimental due to discussions
 // about the returned string type (SharedString vs. Cow<str> etc.). Also it
 // is not available with no_std due to the tr crate.

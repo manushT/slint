@@ -47,7 +47,12 @@ impl<'py> IntoPyObject<'py> for SlintToPyValue {
             Value::EnumerationValue(enum_name, enum_value) => {
                 type_collection.enum_to_py(&enum_name, &enum_value, py)?.into_bound_py_any(py)
             }
-            Value::Keys(keys) => format!("{keys:?}").into_bound_py_any(py),
+            Value::Keys(keys) => {
+                let dict = pyo3::types::PyDict::new(py);
+                dict.set_item("display_string", format!("{keys}"))?;
+                dict.set_item("debug_string", format!("{keys:?}"))?;
+                dict.into_bound_py_any(py)
+            }
             v @ _ => {
                 eprintln!(
                     "Python: conversion from slint to python needed for {v:#?} and not implemented yet"

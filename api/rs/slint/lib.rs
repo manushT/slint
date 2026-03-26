@@ -225,6 +225,7 @@ pub use i_slint_core::model::{
 };
 pub use i_slint_core::timers::{Timer, TimerMode};
 pub use i_slint_core::translations::{SelectBundledTranslationError, select_bundled_translation};
+pub use i_slint_core::input::{key_codes::Key, Keys};
 
 pub mod private_unstable_api;
 
