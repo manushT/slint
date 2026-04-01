@@ -534,7 +534,7 @@ fn gen_corelib(
             "",
         ),
         (
-            vec!["MouseEvent", "TouchPhase", "Keys", "slint_keys_to_string", "slint_keys"],
+            vec!["MouseEvent", "TouchPhase", "Keys", "slint_keys_to_string", "slint_keys", "slint_keys_from_parts"],
             "slint_events_internal.h",
             "#include \"private/slint_point.h\"
             #include \"private/slint_builtin_structs_internal.h\"
@@ -555,6 +555,7 @@ fn gen_corelib(
             "slint_keys_debug_string",
             "slint_keys_to_string",
             "slint_keys",
+            "slint_keys_from_parts",
             "slint_visit_item_tree",
             "slint_windowrc_drop",
             "slint_windowrc_clone",
