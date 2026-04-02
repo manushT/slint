@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FeatureSummary)
 
-option(SLINT_BUILD_TESTING "Build tests" OFF)
+option(SLINT_BUILD_TESTING "Build tests" ON)
 add_feature_info(SLINT_BUILD_TESTING SLINT_BUILD_TESTING "configure whether to build the test suite")
 include(CTest)
 
@@ -32,7 +32,7 @@ endif()
 
 add_subdirectory(api/cpp/)
 
-option(SLINT_BUILD_EXAMPLES "Build Slint Examples" OFF)
+option(SLINT_BUILD_EXAMPLES "Build Slint Examples" ON)
 add_feature_info(SLINT_BUILD_EXAMPLES SLINT_BUILD_EXAMPLES "configure whether to build the examples and demos")
 
 if(SLINT_BUILD_EXAMPLES)

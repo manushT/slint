@@ -33,11 +33,13 @@ export component MainWindow inherits Window {
         { title: "???", checked: false },
         { title: "Profit", checked: false },
     ];
-
+    
     in property <bool> show-header: false;
     in-out property <bool> is-sort-by-name: false;
     in-out property <bool> hide-done-items: false;
-
+    in-out property <keys> user-shortcut: @keys(Control + E);
+    in-out property <string> log-text: "";
+    
     callback todo-added(string);
     callback remove-done();
     callback popup_confirmed;
@@ -49,6 +51,16 @@ export component MainWindow inherits Window {
     }
 
     preferred-width: 400px;
+
+    FocusScope {
+        // KeyBinding for the user shortcut
+        KeyBinding {
+            keys: root.user-shortcut;
+            activated => {
+                root.log-text += user-shortcut.to-string();
+            }
+        }
+    }
     preferred-height: 600px;
 
     confirm_popup := PopupWindow {
@@ -147,7 +159,11 @@ export component MainWindow inherits Window {
 
         HorizontalBox {
             padding: 0px;
-            alignment: end;
+
+            Text {
+                text: "Shortcut triggered: " + root.log-text + "\n";
+                font-weight: 600;
+            }
 
             Button {
                 clicked => {

@@ -1,0 +1,137 @@
+// This .slint file demonstrates keyboard shortcuts with @keys() in markup,
+// and a user-configurable shortcut that can be set from Rust at runtime
+// (issue #11117).
+
+import { Button } from "std-widgets.slint";
+
+export component MainWindow inherits Window {
+    width: 600px;
+    height: 400px;
+
+    callback shortcut-triggered(string);
+    callback button-clicked();
+    in-out property <string> log-text: "Press a shortcut...\n";
+
+    // The user-configurable shortcut. Default is Ctrl+E, but the Rust
+    // backend can override it at runtime via window.set_user_shortcut(...).
+    in-out property <keys> user-shortcut: @keys(Control + E);
+
+    // Shortcut for the button, set from Rust at runtime.
+    in-out property <keys> button-shortcut;
+
+    // Display string derived from the current shortcut value
+    out property <string> user-shortcut-display: user-shortcut.to-string();
+
+    fs := FocusScope {
+        init => { self.focus(); }
+
+        // Static shortcuts defined in .slint
+        KeyBinding {
+            keys: @keys(Control + S);
+            activated => {
+                root.log-text += "Ctrl+S triggered (Save)\n";
+                root.shortcut-triggered("save");
+            }
+        }
+
+        KeyBinding {
+            keys: @keys(Control + Shift? + Z);
+            activated => {
+                root.log-text += "Ctrl+Z triggered (Undo)\n";
+                root.shortcut-triggered("undo");
+            }
+        }
+
+        KeyBinding {
+            keys: @keys(F5);
+            activated => {
+                root.log-text += "F5 triggered (Refresh)\n";
+                root.shortcut-triggered("refresh");
+            }
+        }
+
+        KeyBinding {
+            keys: @keys(Control + "+");
+            activated => {
+                root.log-text += "Ctrl+Plus triggered (Zoom In)\n";
+                root.shortcut-triggered("zoom-in");
+            }
+        }
+
+        // User-configurable shortcut — bound to the root property
+        // that can be SET from Rust/C++/Python/JS at runtime!
+        KeyBinding {
+            keys: root.user-shortcut;
+            activated => {
+                root.log-text += "User shortcut triggered!\n";
+                root.shortcut-triggered("user-custom");
+            }
+        }
+
+        // Button shortcut — set from Rust at runtime
+        KeyBinding {
+            keys: root.button-shortcut;
+            activated => {
+                root.log-text += "Button shortcut triggered!\n";
+                root.button-clicked();
+            }
+        }
+
+        VerticalLayout {
+            padding: 8px;
+            spacing: 4px;
+
+            Text {
+                text: "Keys from Backend Demo (Issue #11117)";
+                font-size: 18px;
+                font-weight: 700;
+            }
+
+            Text {
+                text: "Static shortcuts:";
+                font-size: 14px;
+                font-weight: 600;
+            }
+            Text { text: "  • Ctrl+S → Save"; }
+            Text { text: "  • Ctrl+Z → Undo (Shift-insensitive)"; }
+            Text { text: "  • F5 → Refresh"; }
+            Text { text: "  • Ctrl+Plus → Zoom In"; }
+
+            Rectangle { height: 8px; }
+
+            Text {
+                text: "User-configurable shortcut (set from Rust):";
+                font-size: 14px;
+                font-weight: 600;
+            }
+            Text {
+                text: "  Current binding: " + root.user-shortcut-display;
+            }
+            Text {
+                text: "  ✅ Set from Rust at runtime via Keys::from_parts()!";
+                color: green;
+            }
+
+            Rectangle { height: 8px; }
+
+            Button {
+                text: "Click me! (" + root.button-shortcut.to-string() + ")";
+                clicked => {
+                    root.log-text += "Button clicked!\n";
+                    root.button-clicked();
+                }
+            }
+
+            Rectangle { height: 8px; }
+
+            Text {
+                text: "Event log:";
+                font-size: 14px;
+                font-weight: 600;
+            }
+            Text {
+                text: root.log-text;
+            }
+        }
+    }
+}

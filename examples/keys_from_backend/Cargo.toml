@@ -1,0 +1,13 @@
+[package]
+name = "keys-from-backend"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+slint = { path = "../../api/rs/slint" }
+
+[build-dependencies]
+slint-build = { path = "../../api/rs/build" }

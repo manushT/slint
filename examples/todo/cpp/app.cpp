@@ -50,6 +50,8 @@ AppState create_ui()
     });
 
     demo->set_show_header(true);
+    auto k = slint::Keys::from_parts({"Control", "P"});
+    if (k) demo->set_user_shortcut(*k);
 
     demo->on_apply_sorting_and_filtering([todo_model, demo = slint::ComponentWeakHandle(demo)] {
         auto demo_lock = demo.lock();
