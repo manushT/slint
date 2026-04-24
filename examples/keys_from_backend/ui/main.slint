@@ -10,6 +10,7 @@ export component MainWindow inherits Window {
 
     callback shortcut-triggered(string);
     callback button-clicked();
+    callback key-event(event: KeyEvent);
     in-out property <string> log-text: "Press a shortcut...\n";
 
     // The user-configurable shortcut. Default is Ctrl+E, but the Rust
@@ -22,8 +23,20 @@ export component MainWindow inherits Window {
     // Display string derived from the current shortcut value
     out property <string> user-shortcut-display: user-shortcut.to-string();
 
+    property <bool> listening-for-shortcuts: false;
+
     fs := FocusScope {
         init => { self.focus(); }
+
+        capture-key-pressed(event) => {
+            if listening-for-shortcuts {
+                root.key-event(event);
+                EventResult.accept
+            }
+            else {
+                EventResult.reject
+            }
+        }
 
         // Static shortcuts defined in .slint
         KeyBinding {
@@ -119,6 +132,13 @@ export component MainWindow inherits Window {
                 clicked => {
                     root.log-text += "Button clicked!\n";
                     root.button-clicked();
+                }
+            }
+
+            Button {
+                text: "\{root.listening-for-shortcuts ? "Stop" : "Start"} listening for shortcut";
+                clicked => {
+                    root.listening-for-shortcuts = !root.listening-for-shortcuts;
                 }
             }
 

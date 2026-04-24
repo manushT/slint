@@ -39,8 +39,7 @@ fn main() {
     println!("Created shortcut from Rust: {ctrl_plus}");
 
     // Example 3: With Shift? (matches regardless of Shift state)
-    let ctrl_z_ignore_shift =
-        Keys::from_parts(["Control", "Shift?", "Z"]).expect("valid shortcut");
+    let ctrl_z_ignore_shift = Keys::from_parts(["Control", "Shift?", "Z"]).expect("valid shortcut");
     println!("Created shortcut from Rust: {ctrl_z_ignore_shift:?}");
 
     // Set the user-configurable shortcut from Rust at runtime!
@@ -54,6 +53,31 @@ fn main() {
 
     window.on_button_clicked(|| {
         println!("Button was activated!");
+    });
+
+    window.on_key_event({
+        let window = window.as_weak();
+        move |key_event| {
+            let window = window.upgrade().unwrap();
+            let mut parts = Vec::new();
+            if key_event.modifiers.control {
+                parts.push("Control");
+            }
+            if key_event.modifiers.alt {
+                parts.push("Alt");
+            }
+            if key_event.modifiers.shift {
+                parts.push("Shift");
+            }
+            if key_event.modifiers.meta {
+                parts.push("Meta");
+            }
+            parts.push(&key_event.text);
+            match Keys::from_parts(parts.iter().cloned()) {
+                Ok(keys) => window.set_user_shortcut(keys),
+                Err(err) => println!("Error parsing {parts:?} to Keys: {err}"),
+            }
+        }
     });
 
     println!();
